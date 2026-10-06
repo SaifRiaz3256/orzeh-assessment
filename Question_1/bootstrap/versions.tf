@@ -24,7 +24,14 @@ terraform {
 provider "azurerm" {
   storage_use_azuread = true
 
-  features {}
+  features {
+    storage {
+      # Shared keys are disabled and Owner has no data-plane rights, so skip the provider's
+      # post-create data-plane checks (queue/static website are not used). Everything here is
+      # managed through the management plane.
+      data_plane_available = false
+    }
+  }
 }
 
 provider "azuread" {}

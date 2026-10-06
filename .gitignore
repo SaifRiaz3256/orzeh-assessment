@@ -19,5 +19,6 @@ terraform.rc
 *.pfx
 .env
 
-# Local working notes
+# Local working notes (not part of the submission)
 Question_1/PLAN.md
+Question_1/FLOW.md

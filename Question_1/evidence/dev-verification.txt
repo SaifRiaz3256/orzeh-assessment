@@ -1,0 +1,43 @@
+# Dev deployment verification (2026-10-06T19:16Z, read-only checks)
+
+## Storage account storzehdevtc971
+allowSharedKeyAccess: false
+firewallDefault: Deny
+minTls: TLS1_2
+publicNetworkAccess: Disabled
+sku: Standard_LRS
+
+## Key Vault kv-orzeh-dev-tc971
+aclDefault: Deny
+publicNetworkAccess: Disabled
+rbacAuthorization: true
+softDeleteDays: 7
+
+## Private endpoints
+Name                         Status
+---------------------------  --------
+pe-kv-orzeh-dev-tc971-vault  Approved
+pe-storzehdevtc971-blob      Approved
+
+## Private DNS A records (resolved inside the VNet)
+Zone                               Record           Ip
+---------------------------------  ---------------  ---------
+privatelink.blob.core.windows.net  storzehdevtc971  10.10.2.4
+Zone                             Record              Ip
+-------------------------------  ------------------  ---------
+privatelink.vaultcore.azure.net  kv-orzeh-dev-tc971  10.10.2.5
+
+## Managed identity: every role assignment it holds (all scopes)
+Role                      Scope
+------------------------  -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+Storage Blob Data Reader  /subscriptions/<sub>/resourceGroups/rg-orzeh-dev/providers/Microsoft.Storage/storageAccounts/storzehdevtc971/blobServices/default/containers/appdata
+
+## Subnets
+Name                    NsgAttached    PrivateEndpointPolicies    DefaultOutbound
+----------------------  -------------  -------------------------  -----------------
+snet-private-endpoints  True           Enabled                    False
+snet-workload           True           Disabled                   False
+
+## Access attempt from the public internet (laptop, signed in as subscription Owner)
+Blob list:      HTTP 403 <Code>AuthorizationFailure</Code>  (network-level block)
+Key Vault list: (Forbidden) Public network access is disabled and request is not from a trusted service nor via an approved private link.
