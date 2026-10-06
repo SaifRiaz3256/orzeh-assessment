@@ -40,9 +40,9 @@ resource "github_repository_environment_deployment_policy" "main_only" {
   branch_pattern = "main"
 }
 
+# Accepted (Trivy): GIT-0004 commit signing is not configured on the single maintainer's machine; recommended for production.
+#trivy:ignore:GIT-0004
 resource "github_branch_protection" "main" {
-  #checkov:skip=CKV_GIT_5:Single-maintainer repository - 2 approvals is impossible; a team setup would require them.
-  #checkov:skip=CKV_GIT_6:Commit signing not configured on the maintainer's machine; recommended for production.
   repository_id = data.github_repository.this.node_id
   pattern       = "main"
 

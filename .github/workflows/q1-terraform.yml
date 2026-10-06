@@ -38,7 +38,7 @@ jobs:
     timeout-minutes: 15
     permissions:
       contents: read
-      security-events: write # upload Checkov SARIF to the Security tab
+      security-events: write # upload Trivy SARIF to the Security tab
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -68,21 +68,32 @@ jobs:
           tflint --init --config "$GITHUB_WORKSPACE/Question_1/.tflint.hcl"
           tflint --recursive --chdir Question_1 --config "$GITHUB_WORKSPACE/Question_1/.tflint.hcl"
 
-      - name: Checkov
-        uses: bridgecrewio/checkov-action@99bb2caf247dfd9f03cf984373bc6043d4e32ebf # v12.1347.0
-        with:
-          directory: Question_1
-          framework: terraform
-          config_file: Question_1/.checkov.yaml
-          output_format: cli,sarif
-          output_file_path: console,checkov.sarif
+      # Trivy is installed from the official release and verified against a pinned SHA-256,
+      # instead of using aquasecurity/trivy-action (whose tags were hijacked in a 2026 supply-chain attack).
+      - name: Install Trivy
+        env:
+          TRIVY_VERSION: "0.75.0"
+          TRIVY_SHA256: c6e65abddb348e25f10549df887045629cf28cc72453cd1c63acb717316b3f3f
+        run: |
+          tarball="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          curl -sSfLO "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${tarball}"
+          echo "${TRIVY_SHA256}  ${tarball}" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/bin"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/bin" trivy
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
-      - name: Upload Checkov SARIF
-        if: always() && hashFiles('checkov.sarif') != ''
+      - name: Trivy IaC scan
+        run: |
+          # SARIF for the Security tab (never fails), then the gating table scan.
+          trivy config --quiet --format sarif --output trivy.sarif Question_1
+          trivy config --quiet --exit-code 1 --format table Question_1
+
+      - name: Upload Trivy SARIF
+        if: always() && hashFiles('trivy.sarif') != ''
         uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
-          sarif_file: checkov.sarif
-          category: checkov-q1
+          sarif_file: trivy.sarif
+          category: trivy-q1
 
   plan:
     name: Plan (${{ matrix.environment }})

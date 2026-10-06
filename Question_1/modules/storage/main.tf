@@ -1,8 +1,9 @@
-# tflint-ignore: azurerm_resources_missing_prevent_destroy # prevent_destroy cannot vary per env and dev must be destroyable; prod relies on soft delete/versioning/purge protection.
-resource "azurerm_storage_account" "this" {
-  #checkov:skip=CKV_AZURE_33:Queue service is not used (blob only); queue logging would need data-plane access, which is deliberately unavailable.
-  #checkov:skip=CKV2_AZURE_1:Platform-managed keys + infrastructure (double) encryption; customer-managed keys in Key Vault are a README "Before production" item.
-  #checkov:skip=CKV_AZURE_59:False positive - check reads the deprecated public_network_access_enabled; public_network_access = "Disabled" is set below (azurerm v5).
+# Accepted (Trivy): AZU-0057 logging needs diagnostic settings + Log Analytics; AZU-0060 customer-managed keys.
+# Both are listed under README "Before production".
+# tflint: prevent_destroy cannot vary per env and dev must be destroyable; prod relies on soft delete, versioning and purge protection.
+#trivy:ignore:AZU-0057
+#trivy:ignore:AZU-0060
+resource "azurerm_storage_account" "this" { # tflint-ignore: azurerm_resources_missing_prevent_destroy
   name                     = var.name
   resource_group_name      = var.resource_group_name
   location                 = var.location
@@ -46,9 +47,8 @@ resource "azurerm_storage_account" "this" {
 
 # Created through the management plane (storage_account_id), so it works even though
 # the data plane is unreachable from outside the VNet.
-# tflint-ignore: azurerm_resources_missing_prevent_destroy # prevent_destroy cannot vary per env and dev must be destroyable; prod relies on soft delete/versioning/purge protection.
-resource "azurerm_storage_container" "this" {
-  #checkov:skip=CKV2_AZURE_21:Blob read logging needs diagnostic settings + Log Analytics; listed under README "Before production".
+# tflint: prevent_destroy cannot vary per env and dev must be destroyable; prod relies on soft delete, versioning and purge protection.
+resource "azurerm_storage_container" "this" { # tflint-ignore: azurerm_resources_missing_prevent_destroy
   name                  = var.container_name
   storage_account_id    = azurerm_storage_account.this.id
   container_access_type = "private"

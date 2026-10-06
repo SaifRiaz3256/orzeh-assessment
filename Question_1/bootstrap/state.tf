@@ -7,11 +7,14 @@ resource "azurerm_resource_group" "state" {
 }
 
 # Remote state backend. Locking is a native blob lease on each state file.
+# Accepted (Trivy): AZU-0012 public endpoint is required by GitHub-hosted runners; access is Entra ID + RBAC
+# only (shared keys disabled). Production: private endpoint + self-hosted runners.
+# Accepted (Trivy): AZU-0057 logging needs diagnostic settings + Log Analytics; AZU-0060 customer-managed keys.
+# Both are listed under README "Before production".
+#trivy:ignore:AZU-0012
+#trivy:ignore:AZU-0057
+#trivy:ignore:AZU-0060
 resource "azurerm_storage_account" "state" {
-  #checkov:skip=CKV_AZURE_33:Queue service is not used (blob only); queue logging would need data-plane access, which is deliberately unavailable.
-  #checkov:skip=CKV2_AZURE_1:Platform-managed keys + infrastructure (double) encryption; customer-managed keys in Key Vault are a README "Before production" item.
-  #checkov:skip=CKV_AZURE_59:Public endpoint required by GitHub-hosted runners; access is Entra ID + RBAC only (no keys). Production: private endpoint + self-hosted runners.
-  #checkov:skip=CKV2_AZURE_33:Same reason - no private network path from GitHub-hosted runners.
   name                     = var.state_storage_account_name
   resource_group_name      = azurerm_resource_group.state.name
   location                 = azurerm_resource_group.state.location
@@ -52,7 +55,6 @@ resource "azurerm_storage_account" "state" {
 }
 
 resource "azurerm_storage_container" "state" {
-  #checkov:skip=CKV2_AZURE_21:Blob read logging needs diagnostic settings + Log Analytics; listed under README "Before production".
   name                  = "tfstate"
   storage_account_id    = azurerm_storage_account.state.id
   container_access_type = "private"

@@ -42,7 +42,7 @@ Inside the VNet, `<account>.blob.core.windows.net` resolves via CNAME to `<accou
 | Managed identity: read blobs and nothing more | `modules/identity` | User-assigned identity with **Storage Blob Data Reader scoped to the single container**: no control-plane rights, no write, no other containers, no Key Vault access. |
 | Remote state with locking | `bootstrap/`, `infra/backend.tf` | `azurerm` backend, Entra ID auth (`use_azuread_auth`), native blob-lease locking. The state account is versioned, soft-delete protected, has a `CanNotDelete` lock and `prevent_destroy`. |
 | Reusable modules, dev/prod var files | `modules/*`, `infra/env/` | One root module composes five modules. `env/dev.tfvars` and `env/prod.tfvars` with separate state keys (`env/*.backend.hcl`). |
-| PR: fmt, validate, security scan | `.github/workflows/q1-terraform.yml` → *Static checks* | `terraform fmt -check`, `validate` (infra + bootstrap), `tflint` (azurerm ruleset), **Checkov** with SARIF uploaded to the Security tab. |
+| PR: fmt, validate, security scan | `.github/workflows/q1-terraform.yml` → *Static checks* | `terraform fmt -check`, `validate` (infra + bootstrap), `tflint` (azurerm ruleset), **Trivy** IaC scan (checksum-verified binary), SARIF uploaded to the Security tab. |
 | PR: plan visible to reviewers | *Plan (dev)*, *Plan (prod)* | Plan posted as a sticky PR comment (one per env, updated on each push), plus job summary and an artifact. |
 | Apply only after approval, only from main | `_q1-terraform-apply.yml` | Runs in GitHub environments `dev` / `prod` with required reviewers and a deployment-branch policy of `main`. A step also refuses any ref other than `main`, and `main` is protected (PR + required checks, no force push). |
 | OIDC, no client secrets | `bootstrap/identities.tf` | Entra app registrations with federated credentials for the exact GitHub subjects, in GitHub's **immutable subject format** (`repo:<owner>@<owner_id>/<repo>@<repo_id>:…`). The repo holds only non-secret IDs as Actions *variables*; there are **no Actions secrets**. |
@@ -59,7 +59,7 @@ Question_1/
 │   └── env/{dev,prod}.tfvars, {dev,prod}.backend.hcl
 ├── modules/{network,private_dns,storage,key_vault,identity}/
 ├── evidence/                   # saved plan output for submission
-├── .checkov.yaml  .tflint.hcl
+├── .tflint.hcl
 ```
 
 ## How to run
@@ -170,17 +170,18 @@ Code in a pull request, including a malicious one, can only obtain the read-only
 
 ## Security scan results
 
-`checkov -d Question_1`: **45 passed, 0 failed, 15 skipped.** Every skip is an inline `#checkov:skip` comment next to the resource, with its reason:
+**Trivy 0.75.0** (`trivy config Question_1`, the successor to tfsec): **0 failures**. Accepted findings are ignored with `#trivy:ignore:<ID>` directly above the resource, with the reason written in the comment just above:
 
-| Check | Resource | Reason |
+| Trivy ID | Resource | Reason |
 |---|---|---|
-| CKV_AZURE_59 | app storage | False positive: the check reads the deprecated `public_network_access_enabled`. `public_network_access = "Disabled"` (azurerm v5) is set. |
-| CKV_AZURE_59, CKV2_AZURE_33 | state storage | Public endpoint is needed by GitHub-hosted runners. Access is Entra ID + RBAC only (see production changes). |
-| CKV_AZURE_33 | both storage accounts | Queue service is not used. |
-| CKV2_AZURE_1 | both storage accounts | Customer-managed keys: see production changes. |
-| CKV2_AZURE_21 | both containers | Blob read logging needs diagnostic settings: see production changes. |
-| CKV_AZURE_249 | 4 federated credentials | False positive: the check's repo regex predates the immutable `owner@id/repo@id` format and rejects `@`. The subjects contain no wildcards and are stricter than the name-only format the check expects. |
-| CKV_GIT_5, CKV_GIT_6 | branch protection | Single-maintainer repository (2 approvals impossible). Commit signing not yet configured. |
+| AZU-0012 (critical) | state storage | Public endpoint is needed by GitHub-hosted runners. Access is Entra ID + RBAC only, with shared keys disabled (see production changes). |
+| AZU-0057 | both storage accounts | Logging needs diagnostic settings + Log Analytics (see production changes). |
+| AZU-0060 | both storage accounts | Customer-managed keys (see production changes). |
+| GIT-0004 | branch protection | Commit signing not yet configured for the single maintainer. |
+
+The app storage account passes AZU-0012 because it has public network access disabled and a `Deny` firewall.
+
+In CI, Trivy is downloaded from the official release and **verified against a pinned SHA-256**, instead of using `aquasecurity/trivy-action`: that action's tags were hijacked in a 2026 supply-chain attack, and a checksum-pinned binary cannot be swapped silently. Results are also uploaded as SARIF to the repository's **Security** tab.
 
 `tflint` (azurerm ruleset 0.32.0) is clean. `prevent_destroy` is set on the state account. In the modules it is ignored with a comment, because it cannot vary per environment and dev must be destroyable.
 

@@ -1,5 +1,0 @@
-# Checkov configuration for Question 1.
-# No global skips: every accepted finding is skipped inline (#checkov:skip=...) next to the
-# resource, with its justification, so reviewers see the reason where the code is.
-framework:
-  - terraform

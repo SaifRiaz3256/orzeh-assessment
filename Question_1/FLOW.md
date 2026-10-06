@@ -209,7 +209,8 @@ Trigger: a PR into `main` (any files, so the required checks always report).
 3. `terraform fmt -check -recursive`: fails on unformatted code.
 4. `terraform init -backend=false` + `validate` for `infra` **and** `bootstrap`.
 5. `tflint` with the azurerm ruleset (catches invalid SKUs and deprecated arguments).
-6. **Checkov** security scan → results in the log and as SARIF in the repo's **Security** tab. Fails on any unskipped finding.
+6. **Trivy** is downloaded from the official release and checked against a pinned SHA-256 (no third-party action).
+7. `trivy config` scans the Terraform → SARIF to the repo's **Security** tab, then a gating scan fails the job on any finding not ignored with `#trivy:ignore:<ID>`.
 
 ### 3.2 Jobs `Plan (dev)` and `Plan (prod)` (run in parallel after 3.1)
 1. The job has `permissions: id-token: write`, so it may request an OIDC token.
@@ -278,7 +279,7 @@ sequenceDiagram
     participant Azure as Azure RM
 
     Dev->>GH: open PR
-    GH->>GH: Static checks (fmt, validate, tflint, Checkov)
+    GH->>GH: Static checks (fmt, validate, tflint, Trivy)
     GH->>OIDC: request token (sub …:pull_request)
     OIDC-->>GH: signed JWT
     GH->>Entra: JWT as client assertion (plan app)
@@ -339,4 +340,5 @@ The destroy runs in reverse dependency order: role assignment → identity → p
 | Required status checks | `bootstrap/variables.tf` `required_status_checks` | Must equal the job **names** in `q1-terraform.yml`. |
 | Repo owner/name | `bootstrap/variables.tf` | OIDC subjects (with IDs) are rebuilt automatically from the GitHub API. |
 | Terraform version in CI | `TF_VERSION` in `q1-terraform.yml` and `terraform_version` in `_q1-terraform-apply.yml` | Keep both in sync. |
-| Checkov exceptions | inline `#checkov:skip=ID:reason` in the resource | Kept next to the code on purpose. |
+| Trivy exceptions | `#trivy:ignore:<ID>` **directly** above the resource (no other comment in between), reason in the comment above | Kept next to the code on purpose. |
+| Trivy version | `TRIVY_VERSION` + `TRIVY_SHA256` in `q1-terraform.yml` | Take the SHA-256 from the release's `checksums.txt`. |

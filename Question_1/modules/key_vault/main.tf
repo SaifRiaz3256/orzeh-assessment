@@ -1,7 +1,7 @@
 data "azurerm_client_config" "current" {}
 
-# tflint-ignore: azurerm_resources_missing_prevent_destroy # prevent_destroy cannot vary per env and dev must be destroyable; prod relies on soft delete/versioning/purge protection.
-resource "azurerm_key_vault" "this" {
+# tflint: prevent_destroy cannot vary per env and dev must be destroyable; prod relies on soft delete, versioning and purge protection.
+resource "azurerm_key_vault" "this" { # tflint-ignore: azurerm_resources_missing_prevent_destroy
   name                = var.name
   location            = var.location
   resource_group_name = var.resource_group_name

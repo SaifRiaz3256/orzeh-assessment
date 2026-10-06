@@ -43,7 +43,6 @@ resource "azuread_service_principal" "plan" {
 }
 
 resource "azuread_application_federated_identity_credential" "plan" {
-  #checkov:skip=CKV_AZURE_249:False positive - the check's repo regex predates GitHub's immutable "owner@id/repo@id" subject format, which is stricter than the name-only format it expects. No wildcards are used.
   for_each = local.plan_subjects
 
   application_id = azuread_application.plan.id
@@ -81,7 +80,6 @@ resource "azuread_service_principal" "apply" {
 }
 
 resource "azuread_application_federated_identity_credential" "apply" {
-  #checkov:skip=CKV_AZURE_249:False positive - the check's repo regex predates GitHub's immutable "owner@id/repo@id" subject format, which is stricter than the name-only format it expects. No wildcards are used.
   for_each = toset(var.environments)
 
   application_id = azuread_application.apply.id
