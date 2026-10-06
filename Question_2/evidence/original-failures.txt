@@ -1,0 +1,29 @@
+# Reproduction of the ORIGINAL manifest's failures on kind (Kubernetes v1.37.0), 2026-10-07.
+# Each bug was isolated by fixing only the previous one. The application was stood in by
+# hashicorp/http-echo listening on 8080 (democr.azurecr.io is fictional).
+
+## 1. Apply as-is: namespace does not exist
+$ kubectl apply -f original/broken.yaml
+Error from server (NotFound): error when creating "original/broken.yaml": namespaces "auctions" not found
+Error from server (NotFound): error when creating "original/broken.yaml": namespaces "auctions" not found
+
+## 2. Namespace created: Deployment rejected by the API server (selector != template labels)
+$ kubectl create ns auctions && kubectl apply -f original/broken.yaml
+service/auction-api created
+The Deployment "auction-api" is invalid: spec.template.metadata.labels: Invalid value: {"app":"auctions-api"}: `selector` does not match template `labels`
+# -> Service exists with no endpoints
+
+## 3. Labels fixed only: readiness probe targets port 80, app listens on 8080 -> pod never Ready
+$ kubectl -n auctions rollout status deploy/auction-api --timeout=45s
+error: timed out waiting for the condition
+POD                           READY   RESTARTS
+auction-api-996d89867-9b7pn   false   0
+Readiness probe failed: Get "http://10.244.0.5:80/health": dial tcp 10.244.0.5:80: connect: connection refused
+# The app itself is healthy: direct call to the pod on 8080
+$ curl http://10.244.0.5:8080/health  ->  HTTP 200
+
+## 4. Probe fixed too: Service targetPort 80 still refuses traffic
+endpoint 10.244.0.8 ready=true, endpoint port=80
+$ curl http://auction-api.auctions.svc/health  ->  HTTP 000, curl exit 7 (connection refused)
+# After changing targetPort to 8080:
+$ curl http://auction-api.auctions.svc/health  ->  {"status":"ok"}  HTTP 200

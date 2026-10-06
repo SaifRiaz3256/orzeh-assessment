@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Environment-neutral manifests. Deploy through an overlay:
+#   kubectl apply -k k8s/overlays/aks    (AKS: Key Vault secret + Workload Identity)
+#   kubectl apply -k k8s/overlays/kind   (local test with a stand-in image)
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - deployment.yaml
+  - service.yaml
+  - pdb.yaml
+  - hpa.yaml
+  - networkpolicy.yaml

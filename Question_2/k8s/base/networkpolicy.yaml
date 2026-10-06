@@ -1,0 +1,101 @@
+# Zero-trust networking for the namespace: deny everything, then allow only what the API needs.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: auctions
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress", "Egress"]
+---
+# Inbound: only the ingress controller (AKS application routing add-on) and labelled
+# clients in this namespace may call the API, and only on its HTTP port.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auction-api-allow-ingress
+  namespace: auctions
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: auction-api
+  policyTypes: ["Ingress"]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: app-routing-system
+        - podSelector:
+            matchLabels:
+              auction-api-client: "true"
+      ports:
+        - protocol: TCP
+          port: http
+---
+# Outbound: cluster DNS, and the database (Azure Database for PostgreSQL reached via a
+# private endpoint inside the VNet address space).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auction-api-allow-egress
+  namespace: auctions
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: auction-api
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - ipBlock:
+            cidr: 10.0.0.0/8
+      ports:
+        - protocol: TCP
+          port: 5432
+---
+# default-deny-all also blocks egress of client pods in this namespace, so labelled clients
+# get a matching egress rule: DNS + the API's HTTP port only.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: auction-api-clients-allow-egress
+  namespace: auctions
+  annotations:
+    # Targets client workloads that are deployed separately (not part of this manifest set).
+    kube-score/ignore: networkpolicy-targets-pod
+spec:
+  podSelector:
+    matchLabels:
+      auction-api-client: "true"
+  policyTypes: ["Egress"]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    - to:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: auction-api
+      ports:
+        - protocol: TCP
+          port: 8080
