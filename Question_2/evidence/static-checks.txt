@@ -1,0 +1,46 @@
+# Static checks: original manifest vs corrected manifests (aks overlay)
+# kube-score 1.20.0,, trivy 0.75.0, kubeconform v0.8.0
+
+## kube-score: ORIGINAL
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: The pod does not have a matching NetworkPolicy
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: (api) Container has no configured security context
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: (api) Container has no configured security context
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: (api) CPU limit is not set
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: (api) Memory limit is not set
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: (api) CPU request is not set
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: (api) Memory request is not set
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: (api) Ephemeral Storage limit is not set
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: (api) Ephemeral Storage request is not set
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: (api) Image with latest tag
+  [CRITICAL] auction-api/auctions apps/v1/Deployment: Deployment selector labels not matching template metadata labels
+  [CRITICAL] auction-api/auctions v1/Service: The services selector does not match any pods
+
+## kube-score: CORRECTED (only non-OK lines; empty = clean)
+  exit code: 0
+
+## Trivy: ORIGINAL
+  Failures: 17 (UNKNOWN: 0, LOW: 10, MEDIUM: 4, HIGH: 3, CRITICAL: 0)
+  KSV-0001 (MEDIUM): Container 'api' of Deployment 'auction-api' should set 'securityContext.allowPrivilegeEscalation' to false
+  KSV-0003 (LOW): Container 'api' of Deployment 'auction-api' should add 'ALL' to 'securityContext.capabilities.drop'
+  KSV-0004 (LOW): Container 'api' of 'deployment' 'auction-api' in 'auctions' namespace should set securityContext.capabilities.drop
+  KSV-0011 (LOW): Container 'api' of Deployment 'auction-api' should set 'resources.limits.cpu'
+  KSV-0012 (MEDIUM): Container 'api' of Deployment 'auction-api' should set 'securityContext.runAsNonRoot' to true
+  KSV-0013 (MEDIUM): Container 'api' of Deployment 'auction-api' should specify an image tag
+  KSV-0014 (HIGH): Container 'api' of Deployment 'auction-api' should set 'securityContext.readOnlyRootFilesystem' to true
+  KSV-0015 (LOW): Container 'api' of Deployment 'auction-api' should set 'resources.requests.cpu'
+  KSV-0016 (LOW): Container 'api' of Deployment 'auction-api' should set 'resources.requests.memory'
+  KSV-0018 (LOW): Container 'api' of Deployment 'auction-api' should set 'resources.limits.memory'
+  KSV-0020 (LOW): Container 'api' of Deployment 'auction-api' should set 'securityContext.runAsUser' > 10000
+  KSV-0021 (LOW): Container 'api' of Deployment 'auction-api' should set 'securityContext.runAsGroup' > 10000
+  KSV-0030 (LOW): Either Pod or Container should set 'securityContext.seccompProfile.type' to 'RuntimeDefault'
+  KSV-0104 (MEDIUM): container "api" of deployment "auction-api" in "auctions" namespace should specify a seccomp profile
+  KSV-0106 (LOW): container should drop all
+  KSV-0118 (HIGH): container auction-api in auctions namespace is using the default security context
+  KSV-0118 (HIGH): deployment auction-api in auctions namespace is using the default security context, which allows root privileges
+
+## Trivy: CORRECTED
+  exit code: 0 (0 = no misconfigurations)
+
+## kubeconform (strict, Kubernetes 1.33 schemas + CRD catalog)
+  overlay aks   Summary: 11 resources found parsing stdin - Valid: 11, Invalid: 0, Errors: 0, Skipped: 0
+  overlay kind  Summary: 10 resources found parsing stdin - Valid: 10, Invalid: 0, Errors: 0, Skipped: 0

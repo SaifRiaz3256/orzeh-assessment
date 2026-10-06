@@ -1,0 +1,14 @@
+# Node drains (AKS upgrades, node image updates, autoscaler scale-down) evict at most one replica at a time.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: auction-api
+  namespace: auctions
+  labels:
+    app.kubernetes.io/name: auction-api
+    app.kubernetes.io/part-of: auctions
+spec:
+  maxUnavailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auction-api

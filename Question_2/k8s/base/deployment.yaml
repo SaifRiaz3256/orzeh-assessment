@@ -1,0 +1,127 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auction-api
+  namespace: auctions
+  labels:
+    app.kubernetes.io/name: auction-api
+    app.kubernetes.io/component: api
+    app.kubernetes.io/part-of: auctions
+  annotations:
+    # kube-score opinions that do not apply here (see README):
+    #  - pull policy: the image is digest-pinned and immutable, so IfNotPresent is correct and avoids
+    #    making every pod start depend on registry availability;
+    #  - host anti-affinity: covered by topologySpreadConstraints on hostname and zone below.
+    kube-score/ignore: container-image-pull-policy,deployment-has-host-podantiaffinity
+spec:
+  # No "replicas" field: the HPA owns the replica count (min 3). A static value here would be
+  # re-applied on every kubectl apply / GitOps sync and fight the autoscaler.
+  revisionHistoryLimit: 5
+  progressDeadlineSeconds: 300
+  minReadySeconds: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0 # never drop below the desired count during a rollout
+  # Must match the pod template labels below (the original did not: auction-api vs auctions-api).
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: auction-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: auction-api
+        app.kubernetes.io/component: api
+        app.kubernetes.io/part-of: auctions
+    spec:
+      serviceAccountName: auction-api
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          # Immutable release tag instead of :latest. CI pins the digest at deploy time
+          # (kustomize edit set image ...@sha256:<digest>) and ACR has tag immutability enabled.
+          image: democr.azurecr.io/auction-api:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            # No plaintext credentials: the value comes from a Secret. On AKS that Secret is
+            # synced from Azure Key Vault by the Secrets Store CSI driver (overlays/aks).
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: auction-api-db
+                  key: DB_PASSWORD
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+              ephemeral-storage: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+              ephemeral-storage: 256Mi
+          # Probes use the named port, so they always follow containerPort (the original probed 80).
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+            failureThreshold: 24 # up to 2 minutes to start before liveness takes over
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 2
+            failureThreshold: 3
+          # Liveness only checks the process accepts connections, so a slow database
+          # (which fails /health) removes the pod from the Service without restarting it.
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 20
+            timeoutSeconds: 2
+            failureThreshold: 3
+          lifecycle:
+            preStop:
+              sleep:
+                seconds: 5 # let endpoints update before SIGTERM; needs no shell in the image
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            privileged: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir:
+            sizeLimit: 64Mi
+      # Spread replicas across zones and nodes so one failure cannot take all of them.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: auction-api
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: auction-api
