@@ -1,0 +1,41 @@
+== 0. Cluster kind-orzeh-q2
+  node orzeh-q2-control-plane Ready v1.37.0
+== 1. Deploy (kustomize overlay: kind)
+namespace/auctions created
+serviceaccount/auction-api created
+service/auction-api created
+deployment.apps/auction-api created
+poddisruptionbudget.policy/auction-api created
+horizontalpodautoscaler.autoscaling/auction-api created
+networkpolicy.networking.k8s.io/auction-api-allow-egress created
+networkpolicy.networking.k8s.io/auction-api-allow-ingress created
+networkpolicy.networking.k8s.io/auction-api-clients-allow-egress created
+networkpolicy.networking.k8s.io/default-deny-all created
+== 2. HPA brings the Deployment to minReplicas=3 and all pods become Ready
+  PASS  ready replicas (got: 3)
+  PASS  HPA minReplicas (got: 3)
+== 3. Service routes to the pods on the container port
+  PASS  ready endpoints (got: 3)
+  PASS  endpoint port (got: 8080)
+== 4. Pod Security Admission (restricted) rejects a root/privileged pod
+  PASS  privileged pod rejected (got: rejected)
+== 5. NetworkPolicy
+  PASS  labelled client in namespace -> 200 (got: 200)
+  PASS  unlabelled pod in namespace -> blocked (namespace default-deny egress) (got: blocked)
+  PASS  pod in another namespace -> blocked (API ingress policy) (got: blocked)
+== 6. Secret handling
+  PASS  DB_PASSWORD comes from a Secret (got: auction-api-db)
+  PASS  no plaintext value in the Deployment (got: )
+  PASS  service account token not mounted (got: false)
+== 7. Runtime security context
+  PASS  runs as UID 10001 (non-root) (got: 10001)
+  PASS  read-only root filesystem (got: true)
+  PASS  QoS class (got: Burstable)
+== 8. PodDisruptionBudget
+  PASS  disruptions allowed (got: 1)
+== 9. Zero-downtime rolling restart (60 requests over ~45s while pods are replaced)
+  PASS  requests failed during rollout (got: failed=0)
+  (ok=60 failed=0)
+
+RESULT: 16 passed, 0 failed
+Clean up with: kind delete cluster --name orzeh-q2

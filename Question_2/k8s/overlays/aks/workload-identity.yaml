@@ -1,0 +1,35 @@
+# Federates the auction-api service account with an Entra ID managed identity
+# (Microsoft Entra Workload ID). That identity has "Key Vault Secrets User" on the vault.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auction-api
+  namespace: auctions
+  annotations:
+    azure.workload.identity/client-id: "00000000-0000-0000-0000-000000000000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auction-api
+  namespace: auctions
+spec:
+  template:
+    metadata:
+      labels:
+        azure.workload.identity/use: "true" # webhook injects the federated token
+    spec:
+      containers:
+        - name: api
+          volumeMounts:
+            # The CSI volume must be mounted for the driver to fetch and sync the secret.
+            - name: secrets-store
+              mountPath: /mnt/secrets-store
+              readOnly: true
+      volumes:
+        - name: secrets-store
+          csi:
+            driver: secrets-store.csi.k8s.io
+            readOnly: true
+            volumeAttributes:
+              secretProviderClass: auction-api-kv

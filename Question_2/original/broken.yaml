@@ -1,0 +1,40 @@
+# Original manifest from the assessment brief, unchanged (kept for comparison).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auction-api
+  namespace: auctions
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: auction-api
+  template:
+    metadata:
+      labels:
+        app: auctions-api
+    spec:
+      containers:
+      - name: api
+        image: democr.azurecr.io/auction-api:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: DB_PASSWORD
+          value: "P@ssw0rd123"
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auction-api
+  namespace: auctions
+spec:
+  selector:
+    app: auction-api
+  ports:
+  - port: 80
+    targetPort: 80
