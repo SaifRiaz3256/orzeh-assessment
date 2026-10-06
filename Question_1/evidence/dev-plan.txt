@@ -1,0 +1,559 @@
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+
+Terraform will perform the following actions:
+
+  # azurerm_resource_group.this will be created
+  + resource "azurerm_resource_group" "this" {
+      + id       = (known after apply)
+      + location = "koreacentral"
+      + name     = "rg-orzeh-dev"
+      + tags     = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+    }
+
+  # random_string.suffix will be created
+  + resource "random_string" "suffix" {
+      + id          = (known after apply)
+      + length      = 5
+      + lower       = true
+      + min_lower   = 0
+      + min_numeric = 0
+      + min_special = 0
+      + min_upper   = 0
+      + number      = true
+      + numeric     = true
+      + result      = (known after apply)
+      + special     = false
+      + upper       = false
+    }
+
+  # module.identity.azurerm_role_assignment.blob_reader will be created
+  + resource "azurerm_role_assignment" "blob_reader" {
+      + condition_version                = (known after apply)
+      + description                      = "Read-only blob access for the orzeh-dev application."
+      + id                               = (known after apply)
+      + name                             = (known after apply)
+      + principal_id                     = (known after apply)
+      + principal_type                   = "ServicePrincipal"
+      + role_definition_id               = (known after apply)
+      + role_definition_name             = "Storage Blob Data Reader"
+      + scope                            = (known after apply)
+      + skip_service_principal_aad_check = (known after apply)
+    }
+
+  # module.identity.azurerm_user_assigned_identity.this will be created
+  + resource "azurerm_user_assigned_identity" "this" {
+      + client_id           = (known after apply)
+      + id                  = (known after apply)
+      + location            = "koreacentral"
+      + name                = "id-orzeh-dev-blob-reader"
+      + principal_id        = (known after apply)
+      + resource_group_name = "rg-orzeh-dev"
+      + tags                = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+      + tenant_id           = (known after apply)
+    }
+
+  # module.key_vault.azurerm_key_vault.this will be created
+  + resource "azurerm_key_vault" "this" {
+      + access_policy                 = (known after apply)
+      + id                            = (known after apply)
+      + location                      = "koreacentral"
+      + name                          = (known after apply)
+      + public_network_access_enabled = false
+      + purge_protection_enabled      = false
+      + rbac_authorization_enabled    = true
+      + resource_group_name           = "rg-orzeh-dev"
+      + sku_name                      = "standard"
+      + soft_delete_retention_days    = 7
+      + tags                          = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+      + tenant_id                     = "024a5729-8ce5-4d4d-b97c-0d676be2ac4d"
+      + vault_uri                     = (known after apply)
+
+      + network_acls {
+          + bypass         = "AzureServices"
+          + default_action = "Deny"
+        }
+    }
+
+  # module.key_vault.azurerm_private_endpoint.vault will be created
+  + resource "azurerm_private_endpoint" "vault" {
+      + custom_dns_configs            = (known after apply)
+      + custom_network_interface_name = (known after apply)
+      + id                            = (known after apply)
+      + location                      = "koreacentral"
+      + name                          = (known after apply)
+      + network_interface             = (known after apply)
+      + private_dns_zone_configs      = (known after apply)
+      + resource_group_name           = "rg-orzeh-dev"
+      + subnet_id                     = (known after apply)
+      + tags                          = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+
+      + private_dns_zone_group {
+          + id                   = (known after apply)
+          + name                 = "default"
+          + private_dns_zone_ids = (known after apply)
+        }
+
+      + private_service_connection {
+          + is_manual_connection           = false
+          + name                           = (known after apply)
+          + private_connection_resource_id = (known after apply)
+          + private_ip_address             = (known after apply)
+          + subresource_names              = [
+              + "vault",
+            ]
+        }
+    }
+
+  # module.network.azurerm_network_security_group.private_endpoints will be created
+  + resource "azurerm_network_security_group" "private_endpoints" {
+      + id                  = (known after apply)
+      + location            = "koreacentral"
+      + name                = "nsg-orzeh-dev-private-endpoints"
+      + resource_group_name = "rg-orzeh-dev"
+      + security_rule       = [
+          + {
+              + access                                     = "Allow"
+              + destination_address_prefix                 = "10.10.2.0/24"
+              + destination_address_prefixes               = []
+              + destination_application_security_group_ids = []
+              + destination_port_range                     = "443"
+              + destination_port_ranges                    = []
+              + direction                                  = "Inbound"
+              + name                                       = "AllowHttpsFromWorkload"
+              + priority                                   = 100
+              + protocol                                   = "Tcp"
+              + source_address_prefix                      = "10.10.1.0/24"
+              + source_address_prefixes                    = []
+              + source_application_security_group_ids      = []
+              + source_port_range                          = "*"
+              + source_port_ranges                         = []
+                # (1 unchanged attribute hidden)
+            },
+          + {
+              + access                                     = "Deny"
+              + destination_address_prefix                 = "*"
+              + destination_address_prefixes               = []
+              + destination_application_security_group_ids = []
+              + destination_port_range                     = "*"
+              + destination_port_ranges                    = []
+              + direction                                  = "Inbound"
+              + name                                       = "DenyAllOtherInbound"
+              + priority                                   = 4096
+              + protocol                                   = "*"
+              + source_address_prefix                      = "*"
+              + source_address_prefixes                    = []
+              + source_application_security_group_ids      = []
+              + source_port_range                          = "*"
+              + source_port_ranges                         = []
+                # (1 unchanged attribute hidden)
+            },
+        ]
+      + tags                = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+    }
+
+  # module.network.azurerm_network_security_group.workload will be created
+  + resource "azurerm_network_security_group" "workload" {
+      + id                  = (known after apply)
+      + location            = "koreacentral"
+      + name                = "nsg-orzeh-dev-workload"
+      + resource_group_name = "rg-orzeh-dev"
+      + security_rule       = [
+          + {
+              + access                                     = "Allow"
+              + destination_address_prefix                 = "10.10.2.0/24"
+              + destination_address_prefixes               = []
+              + destination_application_security_group_ids = []
+              + destination_port_range                     = "443"
+              + destination_port_ranges                    = []
+              + direction                                  = "Outbound"
+              + name                                       = "AllowHttpsToPrivateEndpoints"
+              + priority                                   = 100
+              + protocol                                   = "Tcp"
+              + source_address_prefix                      = "10.10.1.0/24"
+              + source_address_prefixes                    = []
+              + source_application_security_group_ids      = []
+              + source_port_range                          = "*"
+              + source_port_ranges                         = []
+                # (1 unchanged attribute hidden)
+            },
+          + {
+              + access                                     = "Deny"
+              + destination_address_prefix                 = "*"
+              + destination_address_prefixes               = []
+              + destination_application_security_group_ids = []
+              + destination_port_range                     = "*"
+              + destination_port_ranges                    = []
+              + direction                                  = "Inbound"
+              + name                                       = "DenyInternetInbound"
+              + priority                                   = 4096
+              + protocol                                   = "*"
+              + source_address_prefix                      = "Internet"
+              + source_address_prefixes                    = []
+              + source_application_security_group_ids      = []
+              + source_port_range                          = "*"
+              + source_port_ranges                         = []
+                # (1 unchanged attribute hidden)
+            },
+        ]
+      + tags                = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+    }
+
+  # module.network.azurerm_subnet.private_endpoints will be created
+  + resource "azurerm_subnet" "private_endpoints" {
+      + address_prefixes                              = [
+          + "10.10.2.0/24",
+        ]
+      + default_outbound_access_enabled               = false
+      + id                                            = (known after apply)
+      + name                                          = "snet-private-endpoints"
+      + network_security_group_id                     = (known after apply)
+      + network_security_group_id_wo                  = (write-only attribute)
+      + private_endpoint_network_policies             = "Enabled"
+      + private_link_service_network_policies_enabled = true
+      + resource_group_name                           = "rg-orzeh-dev"
+      + route_table_id                                = (known after apply)
+      + route_table_id_wo                             = (write-only attribute)
+      + virtual_network_name                          = "vnet-orzeh-dev"
+    }
+
+  # module.network.azurerm_subnet.workload will be created
+  + resource "azurerm_subnet" "workload" {
+      + address_prefixes                              = [
+          + "10.10.1.0/24",
+        ]
+      + default_outbound_access_enabled               = false
+      + id                                            = (known after apply)
+      + name                                          = "snet-workload"
+      + network_security_group_id                     = (known after apply)
+      + network_security_group_id_wo                  = (write-only attribute)
+      + private_endpoint_network_policies             = "Disabled"
+      + private_link_service_network_policies_enabled = true
+      + resource_group_name                           = "rg-orzeh-dev"
+      + route_table_id                                = (known after apply)
+      + route_table_id_wo                             = (write-only attribute)
+      + virtual_network_name                          = "vnet-orzeh-dev"
+    }
+
+  # module.network.azurerm_subnet_network_security_group_association.private_endpoints will be created
+  + resource "azurerm_subnet_network_security_group_association" "private_endpoints" {
+      + id                        = (known after apply)
+      + network_security_group_id = (known after apply)
+      + subnet_id                 = (known after apply)
+    }
+
+  # module.network.azurerm_subnet_network_security_group_association.workload will be created
+  + resource "azurerm_subnet_network_security_group_association" "workload" {
+      + id                        = (known after apply)
+      + network_security_group_id = (known after apply)
+      + subnet_id                 = (known after apply)
+    }
+
+  # module.network.azurerm_virtual_network.this will be created
+  + resource "azurerm_virtual_network" "this" {
+      + address_space                  = [
+          + "10.10.0.0/16",
+        ]
+      + dns_servers                    = (known after apply)
+      + guid                           = (known after apply)
+      + id                             = (known after apply)
+      + location                       = "koreacentral"
+      + name                           = "vnet-orzeh-dev"
+      + private_endpoint_vnet_policies = "Disabled"
+      + resource_group_name            = "rg-orzeh-dev"
+      + subnet                         = (known after apply)
+      + tags                           = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+    }
+
+  # module.private_dns.azurerm_private_dns_zone.this["blob"] will be created
+  + resource "azurerm_private_dns_zone" "this" {
+      + id                                                    = (known after apply)
+      + max_number_of_record_sets                             = (known after apply)
+      + max_number_of_virtual_network_links                   = (known after apply)
+      + max_number_of_virtual_network_links_with_registration = (known after apply)
+      + name                                                  = "privatelink.blob.core.windows.net"
+      + number_of_record_sets                                 = (known after apply)
+      + resource_group_name                                   = "rg-orzeh-dev"
+      + tags                                                  = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+
+      + soa_record (known after apply)
+    }
+
+  # module.private_dns.azurerm_private_dns_zone.this["vault"] will be created
+  + resource "azurerm_private_dns_zone" "this" {
+      + id                                                    = (known after apply)
+      + max_number_of_record_sets                             = (known after apply)
+      + max_number_of_virtual_network_links                   = (known after apply)
+      + max_number_of_virtual_network_links_with_registration = (known after apply)
+      + name                                                  = "privatelink.vaultcore.azure.net"
+      + number_of_record_sets                                 = (known after apply)
+      + resource_group_name                                   = "rg-orzeh-dev"
+      + tags                                                  = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+
+      + soa_record (known after apply)
+    }
+
+  # module.private_dns.azurerm_private_dns_zone_virtual_network_link.this["blob"] will be created
+  + resource "azurerm_private_dns_zone_virtual_network_link" "this" {
+      + id                   = (known after apply)
+      + name                 = "link-orzeh-dev-blob"
+      + private_dns_zone_id  = (known after apply)
+      + registration_enabled = false
+      + resolution_policy    = (known after apply)
+      + tags                 = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+      + virtual_network_id   = (known after apply)
+    }
+
+  # module.private_dns.azurerm_private_dns_zone_virtual_network_link.this["vault"] will be created
+  + resource "azurerm_private_dns_zone_virtual_network_link" "this" {
+      + id                   = (known after apply)
+      + name                 = "link-orzeh-dev-vault"
+      + private_dns_zone_id  = (known after apply)
+      + registration_enabled = false
+      + resolution_policy    = (known after apply)
+      + tags                 = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+      + virtual_network_id   = (known after apply)
+    }
+
+  # module.storage.azurerm_private_endpoint.blob will be created
+  + resource "azurerm_private_endpoint" "blob" {
+      + custom_dns_configs            = (known after apply)
+      + custom_network_interface_name = (known after apply)
+      + id                            = (known after apply)
+      + location                      = "koreacentral"
+      + name                          = (known after apply)
+      + network_interface             = (known after apply)
+      + private_dns_zone_configs      = (known after apply)
+      + resource_group_name           = "rg-orzeh-dev"
+      + subnet_id                     = (known after apply)
+      + tags                          = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+
+      + private_dns_zone_group {
+          + id                   = (known after apply)
+          + name                 = "default"
+          + private_dns_zone_ids = (known after apply)
+        }
+
+      + private_service_connection {
+          + is_manual_connection           = false
+          + name                           = (known after apply)
+          + private_connection_resource_id = (known after apply)
+          + private_ip_address             = (known after apply)
+          + subresource_names              = [
+              + "blob",
+            ]
+        }
+    }
+
+  # module.storage.azurerm_storage_account.this will be created
+  + resource "azurerm_storage_account" "this" {
+      + access_tier                                    = (known after apply)
+      + account_kind                                   = "StorageV2"
+      + account_replication_type                       = "LRS"
+      + account_replication_type_migrating_to          = (known after apply)
+      + account_replication_type_migration_in_progress = (known after apply)
+      + account_tier                                   = "Standard"
+      + allow_nested_items_to_be_public                = false
+      + allowed_copy_scope                             = "PrivateLink"
+      + cross_tenant_replication_enabled               = false
+      + default_to_oauth_authentication                = true
+      + dns_endpoint_type                              = "Standard"
+      + https_traffic_only_enabled                     = true
+      + id                                             = (known after apply)
+      + infrastructure_encryption_enabled              = true
+      + is_hns_enabled                                 = false
+      + large_file_share_enabled                       = (known after apply)
+      + local_user_enabled                             = false
+      + location                                       = "koreacentral"
+      + min_tls_version                                = "TLS1_2"
+      + name                                           = (known after apply)
+      + nfsv3_enabled                                  = false
+      + primary_access_key                             = (sensitive value)
+      + primary_blob_connection_string                 = (sensitive value)
+      + primary_blob_endpoint                          = (known after apply)
+      + primary_blob_host                              = (known after apply)
+      + primary_blob_internet_endpoint                 = (known after apply)
+      + primary_blob_internet_host                     = (known after apply)
+      + primary_blob_microsoft_endpoint                = (known after apply)
+      + primary_blob_microsoft_host                    = (known after apply)
+      + primary_connection_string                      = (sensitive value)
+      + primary_dfs_endpoint                           = (known after apply)
+      + primary_dfs_host                               = (known after apply)
+      + primary_dfs_internet_endpoint                  = (known after apply)
+      + primary_dfs_internet_host                      = (known after apply)
+      + primary_dfs_microsoft_endpoint                 = (known after apply)
+      + primary_dfs_microsoft_host                     = (known after apply)
+      + primary_file_endpoint                          = (known after apply)
+      + primary_file_host                              = (known after apply)
+      + primary_file_internet_endpoint                 = (known after apply)
+      + primary_file_internet_host                     = (known after apply)
+      + primary_file_microsoft_endpoint                = (known after apply)
+      + primary_file_microsoft_host                    = (known after apply)
+      + primary_location                               = (known after apply)
+      + primary_queue_endpoint                         = (known after apply)
+      + primary_queue_host                             = (known after apply)
+      + primary_queue_microsoft_endpoint               = (known after apply)
+      + primary_queue_microsoft_host                   = (known after apply)
+      + primary_table_endpoint                         = (known after apply)
+      + primary_table_host                             = (known after apply)
+      + primary_table_microsoft_endpoint               = (known after apply)
+      + primary_table_microsoft_host                   = (known after apply)
+      + primary_web_endpoint                           = (known after apply)
+      + primary_web_host                               = (known after apply)
+      + primary_web_internet_endpoint                  = (known after apply)
+      + primary_web_internet_host                      = (known after apply)
+      + primary_web_microsoft_endpoint                 = (known after apply)
+      + primary_web_microsoft_host                     = (known after apply)
+      + public_network_access                          = "Disabled"
+      + public_network_access_enabled                  = (known after apply)
+      + queue_encryption_key_type                      = "Service"
+      + resource_group_name                            = "rg-orzeh-dev"
+      + secondary_access_key                           = (sensitive value)
+      + secondary_blob_connection_string               = (sensitive value)
+      + secondary_blob_endpoint                        = (known after apply)
+      + secondary_blob_host                            = (known after apply)
+      + secondary_blob_internet_endpoint               = (known after apply)
+      + secondary_blob_internet_host                   = (known after apply)
+      + secondary_blob_microsoft_endpoint              = (known after apply)
+      + secondary_blob_microsoft_host                  = (known after apply)
+      + secondary_connection_string                    = (sensitive value)
+      + secondary_dfs_endpoint                         = (known after apply)
+      + secondary_dfs_host                             = (known after apply)
+      + secondary_dfs_internet_endpoint                = (known after apply)
+      + secondary_dfs_internet_host                    = (known after apply)
+      + secondary_dfs_microsoft_endpoint               = (known after apply)
+      + secondary_dfs_microsoft_host                   = (known after apply)
+      + secondary_file_endpoint                        = (known after apply)
+      + secondary_file_host                            = (known after apply)
+      + secondary_file_internet_endpoint               = (known after apply)
+      + secondary_file_internet_host                   = (known after apply)
+      + secondary_file_microsoft_endpoint              = (known after apply)
+      + secondary_file_microsoft_host                  = (known after apply)
+      + secondary_location                             = (known after apply)
+      + secondary_queue_endpoint                       = (known after apply)
+      + secondary_queue_host                           = (known after apply)
+      + secondary_queue_microsoft_endpoint             = (known after apply)
+      + secondary_queue_microsoft_host                 = (known after apply)
+      + secondary_table_endpoint                       = (known after apply)
+      + secondary_table_host                           = (known after apply)
+      + secondary_table_microsoft_endpoint             = (known after apply)
+      + secondary_table_microsoft_host                 = (known after apply)
+      + secondary_web_endpoint                         = (known after apply)
+      + secondary_web_host                             = (known after apply)
+      + secondary_web_internet_endpoint                = (known after apply)
+      + secondary_web_internet_host                    = (known after apply)
+      + secondary_web_microsoft_endpoint               = (known after apply)
+      + secondary_web_microsoft_host                   = (known after apply)
+      + sftp_enabled                                   = false
+      + shared_access_key_enabled                      = false
+      + table_encryption_key_type                      = "Service"
+      + tags                                           = {
+          + "environment" = "dev"
+          + "managed_by"  = "terraform"
+          + "project"     = "orzeh"
+        }
+
+      + blob_properties {
+          + change_feed_enabled      = false
+          + default_service_version  = (known after apply)
+          + last_access_time_enabled = false
+          + versioning_enabled       = true
+
+          + container_delete_retention_policy {
+              + days = 7
+            }
+
+          + delete_retention_policy {
+              + days                     = 7
+              + permanent_delete_enabled = false
+            }
+        }
+
+      + network_rules {
+          + bypass                     = [
+              + "AzureServices",
+            ]
+          + default_action             = "Deny"
+          + ip_rules                   = (known after apply)
+          + virtual_network_subnet_ids = (known after apply)
+        }
+
+      + routing (known after apply)
+
+      + share_properties (known after apply)
+    }
+
+  # module.storage.azurerm_storage_container.this will be created
+  + resource "azurerm_storage_container" "this" {
+      + container_access_type             = "private"
+      + default_encryption_scope          = (known after apply)
+      + encryption_scope_override_enabled = true
+      + has_immutability_policy           = (known after apply)
+      + has_legal_hold                    = (known after apply)
+      + id                                = (known after apply)
+      + metadata                          = (known after apply)
+      + name                              = "appdata"
+      + storage_account_id                = (known after apply)
+      + url                               = (known after apply)
+    }
+
+Plan: 20 to add, 0 to change, 0 to destroy.
+
+Changes to Outputs:
+  + key_vault_private_ip       = (known after apply)
+  + key_vault_uri              = (known after apply)
+  + managed_identity_client_id = (known after apply)
+  + resource_group_name        = "rg-orzeh-dev"
+  + storage_account_name       = (known after apply)
+  + storage_private_ip         = (known after apply)
+  + vnet_id                    = (known after apply)

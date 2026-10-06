@@ -102,6 +102,8 @@ terraform plan -var-file=env/prod.tfvars -out=prod.tfplan
 terraform show -no-color prod.tfplan > ../evidence/prod-plan.txt
 ```
 
+> **New environments:** the pipeline's plan identity is read-only on state, so it cannot create a state file that does not exist yet (`init` writes an empty state for a new key → `403`). Initialise each environment's state once, which step 2 does (`terraform init -backend-config=env/<env>.backend.hcl`).
+
 ### 3. Through the pipeline (normal path)
 1. Open a PR into `main`. *Static checks* runs, then *Plan (dev)* and *Plan (prod)* comment their plans on the PR.
 2. Merge after review. On `main`, the plans are re-created and uploaded.
